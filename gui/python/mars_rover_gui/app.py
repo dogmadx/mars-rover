@@ -9,6 +9,43 @@ from .hud import telemetry_lines
 from .student_profile import create_environment, visible_catalog
 
 
+def _monospace_family() -> str:
+    from tkinter import font
+
+    available = set(font.families())
+    for family in ("Consolas", "Menlo", "SF Mono", "DejaVu Sans Mono", "Courier New"):
+        if family in available:
+            return family
+    return font.nametofont("TkFixedFont").actual("family")
+
+
+def _flat_button(parent, text: str, bg: str, font) -> "tk.Label":
+    # tk.Button on macOS is drawn by Aqua and ignores bg, so light text on the
+    # native light button becomes invisible. A Label honours colours everywhere.
+    return tk.Label(
+        parent,
+        text=text,
+        bg=bg,
+        fg="#ffffff",
+        font=font,
+        relief="raised",
+        borderwidth=1,
+        padx=4,
+        pady=3,
+        cursor="hand2",
+        takefocus=False,
+    )
+
+
+def _on_click(widget, command) -> None:
+    def release(event) -> None:
+        inside = 0 <= event.x < widget.winfo_width() and 0 <= event.y < widget.winfo_height()
+        if inside:
+            command()
+
+    widget.bind("<ButtonRelease-1>", release)
+
+
 class StudentPlayer:
     def __init__(self, args: argparse.Namespace):
         global tk, Image, ImageTk
@@ -17,6 +54,7 @@ class StudentPlayer:
 
         self.root = tk.Tk()
         self.root.title("Mars Rover Manual Control")
+        self.mono = _monospace_family()
         self.fullscreen = bool(args.fullscreen)
         self.sidebar_width = 500
         if self.fullscreen:
@@ -53,7 +91,7 @@ class StudentPlayer:
             text="ROVER TELEMETRY",
             bg="#171717",
             fg="#ffffff",
-            font=("Consolas", 14, "bold"),
+            font=(self.mono, 14, "bold"),
         ).pack(anchor="w", pady=(0, 6))
         self.telemetry = tk.Label(
             self.sidebar,
@@ -61,7 +99,7 @@ class StudentPlayer:
             anchor="nw",
             bg="#171717",
             fg="#f4f4f4",
-            font=("Consolas", 9, "bold"),
+            font=(self.mono, 9, "bold"),
         )
         self.telemetry.pack(fill="x")
         tk.Label(
@@ -69,55 +107,32 @@ class StudentPlayer:
             text="CONTROLS",
             bg="#171717",
             fg="#ffffff",
-            font=("Consolas", 12, "bold"),
+            font=(self.mono, 12, "bold"),
         ).pack(anchor="w", pady=(8, 4))
         controls = tk.Frame(self.sidebar, bg="#171717")
         controls.pack(fill="x")
-        self.control_buttons: dict[str, tuple[tk.Button, int]] = {}
+        self.control_buttons: dict[str, tuple[tk.Label, int]] = {}
         for index, (name, label, bit) in enumerate(HELD_CONTROLS + PULSE_CONTROLS):
-            button = tk.Button(
-                controls,
-                text=label,
-                bg="#252525",
-                fg="#eeeeee",
-                activebackground="#287a3d",
-                activeforeground="#ffffff",
-                font=("Consolas", 8, "bold"),
-                relief="flat",
-                borderwidth=1,
-                height=2,
-                takefocus=False,
-            )
+            button = _flat_button(controls, label, "#252525", (self.mono, 8, "bold"))
+            button.configure(fg="#eeeeee", height=2)
             button.grid(row=index // 3, column=index % 3, sticky="nsew", padx=1, pady=1)
             if (name, label, bit) in HELD_CONTROLS:
                 button.bind("<ButtonPress-1>", lambda event, value=bit: self._hold(value, True))
                 button.bind("<ButtonRelease-1>", lambda event, value=bit: self._hold(value, False))
                 button.bind("<Leave>", lambda event, value=bit: self._hold(value, False))
             else:
-                button.configure(command=lambda value=bit: self._pulse(value))
+                _on_click(button, lambda value=bit: self._pulse(value))
             self.control_buttons[name] = (button, bit)
         for column in range(3):
             controls.grid_columnconfigure(column, weight=1)
         session = tk.Frame(self.sidebar, bg="#171717")
         session.pack(fill="x", pady=(5, 0))
-        tk.Button(
-            session,
-            text="R  RESET SAME WORLD",
-            command=self._reset,
-            bg="#3b3030",
-            fg="#ffffff",
-            font=("Consolas", 9, "bold"),
-            takefocus=False,
-        ).pack(side="left", expand=True, fill="x", padx=(0, 2))
-        tk.Button(
-            session,
-            text="T  RANDOM NEW WORLD",
-            command=self._new_track,
-            bg="#303b46",
-            fg="#ffffff",
-            font=("Consolas", 9, "bold"),
-            takefocus=False,
-        ).pack(side="left", expand=True, fill="x", padx=(2, 0))
+        reset = _flat_button(session, "R  RESET SAME WORLD", "#3b3030", (self.mono, 9, "bold"))
+        _on_click(reset, self._reset)
+        reset.pack(side="left", expand=True, fill="x", padx=(0, 2))
+        new_track = _flat_button(session, "T  RANDOM NEW WORLD", "#303b46", (self.mono, 9, "bold"))
+        _on_click(new_track, self._new_track)
+        new_track.pack(side="left", expand=True, fill="x", padx=(2, 0))
         self.status = tk.Label(
             self.sidebar,
             justify="left",
@@ -125,7 +140,7 @@ class StudentPlayer:
             wraplength=self.sidebar_width - 20,
             bg="#171717",
             fg="#aaaaaa",
-            font=("Consolas", 8),
+            font=(self.mono, 8),
         )
         self.status.pack(side="bottom", fill="x")
         self.root.bind_all("<KeyPress>", self._press)
