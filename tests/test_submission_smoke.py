@@ -123,6 +123,16 @@ class SubmissionSmokeTest(unittest.TestCase):
         self.assertEqual(tuple(logits.shape), (steps, batch, len(ACTION_MACROS)))
         self.assertEqual(tuple(values.shape), (steps, batch))
 
+    def test_initial_policy_moves_forward(self) -> None:
+        policy = Policy(obs_dim=160, action_dim=len(ACTION_MACROS), hidden_size=32)
+        self.assertGreater(float(policy.actor.bias[1] - policy.actor.bias[0]), 3.0)
+        logits, _, _ = policy.step(
+            torch.zeros(1, 160), torch.zeros(1, dtype=torch.long),
+            torch.zeros(1), torch.zeros(1), torch.zeros(1), torch.ones(1),
+            policy.initial(1, torch.device("cpu")),
+        )
+        self.assertEqual(int(logits.argmax(-1).item()), 1)
+
     def test_training_entrypoint_uses_platform_onnx_contract(self) -> None:
         try:
             train = importlib.import_module("train")

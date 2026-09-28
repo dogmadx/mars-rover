@@ -17,7 +17,7 @@ started = time.monotonic()
 def save_weights(path, model, optimizer, rms, config, frames):
     del path, optimizer, config, frames
     export_agent_onnx("/output/policy.onnx", model, rms)
-    if time.monotonic() - started > 3_540:
+    if time.monotonic() - started > 7_140:
         raise SystemExit(0)
 
 

@@ -25,6 +25,11 @@ class Policy(nn.Module):
             nn.init.zeros_(layer.bias)
         nn.init.orthogonal_(self.actor.weight, 0.01)
         nn.init.orthogonal_(self.critic.weight, 1.0)
+        # С самого начала марсоход чаще пробует ехать вперёд; PPO меняет эти веса.
+        with torch.no_grad():
+            self.actor.bias.fill_(-1.0)
+            self.actor.bias[1] = 3.5
+            self.actor.bias[5] = 0.75
 
     def initial(self, batch: int, device: torch.device) -> torch.Tensor:
         return torch.zeros(batch, self.hidden_size, device=device)

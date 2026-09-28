@@ -78,8 +78,8 @@ inline ControlInput decode_discrete_action(int action, float tilt_torque) {
   out.jump = (action & ControlJump) != 0;
   out.jump_front = (action & ControlJumpFront) != 0;
   out.jump_rear = (action & ControlJumpRear) != 0;
-  out.roof_piston_front = (action & ControlRoofPistonFront) != 0;
-  out.roof_piston_rear = (action & ControlRoofPistonRear) != 0;
+  out.roof_piston_front = (action & (ControlRoofPiston | ControlRoofPistonFront)) != 0;
+  out.roof_piston_rear = (action & (ControlRoofPiston | ControlRoofPistonRear)) != 0;
   out.ballast_blow = (action & ControlBallastBlow) != 0;
   out.ballast_flood = (action & ControlBallastFlood) != 0;
   out.toggle_climb = (action & ControlToggleClimb) != 0;

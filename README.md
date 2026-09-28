@@ -1,61 +1,75 @@
-<<<<<<< HEAD
-# mars-rover
-=======
-# Публичная среда Mars Rover
+# Марсоход — решение команды
 
-Это полный студенческий набор разработки: все публичные тренировочные биомы,
-исходники движка, Python-обёртка, GUI, обучение, smoke-тесты и упаковка посылки.
-Закрытые тестовые биомы, их параметры, сиды и визуальные профили сюда не входят.
+Цель — чтобы ровер проехал как можно дальше. Сервер соберёт образ по
+`Dockerfile`, запустит `train.py` (не дольше ~2 часов) и возьмёт модель из
+`/output/policy.onnx`. На проверке 48 заездов на закрытых биомах по 300 секунд
+максимум; балл — медиана максимальных расстояний.
 
-## Сборка
+Репозиторий — одна рабочая папка: серверное стартовое решение плюс публичная
+среда организаторов (все тренировочные биомы, GUI). Исходные версии обеих
+папок в том виде, как их прислали, лежат под тегом `upstream-v0.16`.
 
-Требуются Python 3.10+, C++20-компилятор, `setuptools`, `wheel` и `pybind11`.
+## Что можно менять
+
+| Файл | Для чего |
+|---|---|
+| `model.py` | Сеть: 160 входов → 31 действие, с памятью |
+| `train.py` | Параметры PPO, `TOTAL_FRAMES`, лимит времени (7140 с) |
+| `python/mars_rover_env/configs/env.yaml` | Параметры тренировочного мира |
+| `cpp/include/mars/custom_biomes.inc.hpp` | Свои тренировочные биомы |
+| `cpp/include/mars/biomes/*.inc.hpp` | Публичные тренировочные биомы |
+
+## Что НЕ менять
+
+Серверный контракт: `cpp/include/mars/action.hpp`,
+`python/mars_rover_env/actions.py`, наблюдения, `rover_rig.yaml` и конструкцию
+ровера, а также физику в `cpp/src/`. На сервере они свои, и изменения только
+рассинхронизируют обучение с проверкой.
+
+## Сборка и проверка
+
+Нужны Python 3.10+, компилятор C++20, `setuptools`, `wheel`, `pybind11`, `torch`.
 
 ```bash
-python -m pip install --upgrade setuptools wheel pybind11
-python -m pip install --no-build-isolation --force-reinstall .
+python -m pip install setuptools wheel pybind11 numpy pyyaml torch
+make build                                   # собрать C++ среду
+python -m unittest discover -s tests -v      # smoke-тесты
+python -c "import _mars_rover_cpp as m; print([b['id'] for b in m.biome_catalog()])"
 ```
 
-Проверить установку и увидеть доступные публичные биомы:
+После обучения модель проверяется командой `python check_policy.py путь/к/policy.onnx`
+(нужен модуль `arena` из серверного образа).
+
+## GUI
 
 ```bash
-python -c "import _mars_rover_cpp as m; print(m.biome_catalog())"
-```
-
-GUI ставится отдельно из вложенного каталога:
-
-```bash
-python -m pip install --no-build-isolation --force-reinstall ./gui
+make gui
 mars-rover-play --list-biomes
 mars-rover-play --biome gravity_shelf_lug --debug
 ```
 
-Перед отправкой стартового решения можно проверить весь контракт:
-
-```bash
-make check
-make submission
-```
-
-## Добавление нового тренировочного биома
+## Добавление тренировочного биома
 
 1. Откройте `cpp/include/mars/custom_biomes.inc.hpp`.
 2. Скопируйте `ExampleTrainingBiome`, задайте уникальные `id()` и
-   `display_name()` и настройте `sample_params()` и `visuals()`.
-3. Оставьте `split()` равным `BiomeSplit::Train`: пользовательские биомы должны
-   относиться только к тренировочному каталогу.
-4. Создайте статический экземпляр класса в `custom_biomes::append` и добавьте
-   его адрес в `out`.
-5. Повторите установку пакета и проверьте каталог командой выше.
+   `display_name()`, настройте `sample_params()` и `visuals()`.
+3. Оставьте `split()` равным `BiomeSplit::Train`.
+4. Добавьте статический экземпляр в `custom_biomes::append`.
+5. Выполните `make build` и проверьте каталог командой выше.
 
-Для более глубокой механики доступны:
+## Отправка
 
-- `cpp/include/mars/biome_bank.hpp` — реестр и параметры биомов;
-- `cpp/src/terrain.cpp` — генерация рельефа;
-- `cpp/src/mechanics.cpp` — эффекты среды;
-- `python/mars_rover_env/configs/env.yaml` — параметры эпизода и генерации;
-- `gui/` — визуализация публичного каталога.
+```bash
+python -m unittest discover -s tests -v
+python package_submission.py      # → submission.zip
+```
 
-Не меняйте контракт действий, наблюдений и конструкцию ровера, если планируете
-использовать обученную модель в официальном evaluator.
->>>>>>> f335f8c (environment)
+В архив попадают только корневые файлы решения и папки `cpp/`, `python/`,
+`tests/`; `gui/` и прочее локальное не уходит. `make check` собирает Docker-образ
+как сервер, но для этого нужен образ `arena-base`.
+
+После каждой отправки ставьте тег `sub-NN` и записывайте балл ниже.
+
+| Тег | Что изменили | Балл |
+|---|---|---|
+| | | |
